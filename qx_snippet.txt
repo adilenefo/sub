@@ -1,0 +1,59 @@
+socks5=t-uc222-10067.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=香港高速专线1[4K]
+socks5=t-uc222-10068.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=香港高速专线2[4K]
+socks5=t-uc222-10069.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=香港高速专线3[推荐]
+socks5=t-hkbn75-1001.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=香港高速专线4[推荐]
+socks5=t-hkbn75-1002.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=香港高速专线5[推荐]
+socks5=t-hkbn75-1000.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=香港专线6[ChatGPT]
+socks5=t-hkbn75-1003.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=日本 - 东京1
+socks5=t-tx104-1004.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=日本 - 东京2
+socks5=t-tx104-1006.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=台湾 - 彰化[ChatGPT]
+socks5=t-tx104-1008.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=台湾 - 台北[ChatGPT]
+socks5=t-hkbn75-1007.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=台湾 - 新北[ChatGPT]
+socks5=t-tx104-1005.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=新加坡
+socks5=t-tx104-1009.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=韩国 - 首尔1
+socks5=t-tx104-1010.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=韩国 - 首尔2
+socks5=t-tx104-1011.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=泰国 - 曼谷
+socks5=t-tx104-1013.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=印尼 - 雅加达
+socks5=t-tx104-1014.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=马来西亚 - 吉隆坡
+socks5=t-tx104-1012.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=越南 - 河内[ChatGPT]
+socks5=t-tx104-1016.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=印度 - 班加罗尔
+socks5=t-tx104-1015.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=印度 - 孟买
+socks5=t-tx104-1017.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=菲律宾 - 马尼拉
+socks5=t-tx104-1018.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=菲律宾 - 马卡蒂
+socks5=t-tx104-1019.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=阿联酋 - 迪拜
+socks5=t-tx104-1020.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=阿联酋 - 富查伊哈
+socks5=t-tx104-1024.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=沙特阿拉伯 - 利雅得
+socks5=t-tx104-1025.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=卡塔尔 - 多哈
+socks5=t-tx104-1021.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=澳大利亚 - 悉尼
+socks5=t-tx104-1022.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=澳大利亚 - 墨尔本
+socks5=t-tx104-1023.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=新西兰 - 奥克兰
+socks5=t-tx145-1025.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=美国 - 旧金山
+socks5=t-tx145-1024.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=美国 - 洛杉矶
+socks5=t-tx145-1026.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=美国 - 西雅图
+socks5=t-tx145-1028.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=美国 - 达拉斯
+socks5=t-tx145-1027.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=美国 - 亚特兰大
+socks5=t-tx145-1029.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=加拿大 - 温哥华
+socks5=t-tx145-1030.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=墨西哥
+socks5=t-tx145-1031.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=俄罗斯 - 新西伯利亚
+socks5=t-tx145-1032.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=俄罗斯 - 莫斯科
+socks5=t-tx145-1033.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=西班牙 - 马德里
+socks5=t-tx145-1035.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=德国 - 法兰克福
+socks5=t-tx145-1036.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=捷克 - 布拉格
+socks5=t-tx145-1037.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=英国 - 伦敦
+socks5=t-tx145-1038.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=土耳其 - 伊斯坦布尔
+socks5=t-tx145-1039.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=法国 - 里昂
+socks5=t-tx145-1040.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=法国 - 巴黎
+socks5=t-tx145-1041.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=荷兰 - 阿姆斯特丹
+socks5=t-tx145-1042.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=意大利 - 巴勒莫
+socks5=t-tx145-1043.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=芬兰 - 赫尔辛基
+socks5=t-tx145-1053.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=爱尔兰 - 都柏林
+socks5=t-tx145-1044.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=摩尔多瓦 - 基希讷乌
+socks5=t-tx145-1045.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=智利 - 瓦尔迪维亚
+socks5=t-tx145-1046.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=巴西 - 圣保罗
+socks5=t-tx145-1047.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=阿根廷 - 布宜诺斯艾利斯
+socks5=t-tx145-1054.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=哥伦比亚 - 波哥大
+socks5=t-tx145-1048.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=南非 - 约翰内斯堡
+socks5=t-tx145-1049.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=埃及 - 开罗
+socks5=t-tx145-1051.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=突尼斯
+socks5=t-tx145-1050.ci-lab.com:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=尼日利亚 - 拉各斯
+socks5=38.54.85.54:80, username=pro, password=u2025887:375a8ef8-ed2f-4abc-8da2-bfad89f20d15, fast-open=false, udp-relay=false, tag=Wakanda
