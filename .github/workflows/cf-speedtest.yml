@@ -1,0 +1,232 @@
+name: CF IP SpeedTest & Update Nodes
+
+on:
+  schedule:
+    - cron: '0 0,6,12,18 * * *'   # 每6小时执行一次 (UTC)
+  workflow_dispatch:               # 支持手动触发
+
+jobs:
+  speedtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Download CloudflareSpeedTest
+        run: |
+          curl -sL https://github.com/XIU2/CloudflareSpeedTest/releases/latest/download/CloudflareST_linux_amd64.tar.gz \
+            | tar -xz -C /tmp
+          chmod +x /tmp/CloudflareST
+
+      - name: Generate IP list for each region
+        run: |
+          # CF 官方 IP 段（各地区真实 PoP 节点 IP 范围）
+          cat > /tmp/iplist.txt << 'EOF'
+          173.245.48.0/20
+          103.21.244.0/22
+          103.22.200.0/22
+          103.31.4.0/22
+          141.101.64.0/18
+          108.162.192.0/18
+          190.93.240.0/20
+          188.114.96.0/20
+          197.234.240.0/22
+          198.41.128.0/17
+          162.158.0.0/15
+          104.16.0.0/13
+          104.24.0.0/14
+          172.64.0.0/13
+          131.0.72.0/22
+          EOF
+          # 去除前置空格
+          sed -i 's/^[[:space:]]*//' /tmp/iplist.txt
+
+      - name: Run speed test
+        run: |
+          cd /tmp
+          # 测速参数：并发64，延迟上限200ms，下载测试4s，最少保留100个结果
+          ./CloudflareST \
+            -f /tmp/iplist.txt \
+            -n 200 \
+            -tl 200 \
+            -tp 443 \
+            -t 4 \
+            -dn 5 \
+            -dt 4 \
+            -o /tmp/result.csv \
+            -p 0 \
+            || true
+          echo "测速完成，结果行数: $(wc -l < /tmp/result.csv)"
+
+      - name: Process results & assign country labels
+        run: |
+          python3 << 'PYEOF'
+          import csv, json, urllib.request, time, subprocess, os
+
+          # 读取测速结果
+          rows = []
+          try:
+              with open('/tmp/result.csv') as f:
+                  reader = csv.DictReader(f)
+                  for row in reader:
+                      rows.append(row)
+          except:
+              pass
+
+          print(f"总测速结果: {len(rows)} 个 IP")
+
+          if not rows:
+              # 若测速失败，写入已知可用的备用节点
+              fallback = [
+                  "162.159.192.40:443#🇯🇵JP-备用",
+                  "162.159.193.40:443#🇺🇸US-备用",
+                  "104.26.9.4:443#🇸🇬SG-备用",
+              ]
+              with open('/tmp/ADD.txt', 'w') as f:
+                  f.write('\n'.join(fallback))
+              print("使用备用节点")
+              exit(0)
+
+          # 查询 IP 的 CF PoP（cdn-cgi/trace）以获取真实地区
+          IATA_TO_CC = {
+              'HKG':'HK','SIN':'SG','ICN':'KR','NRT':'JP','KIX':'JP','OKA':'JP','FUK':'JP',
+              'TPE':'TW','TSA':'TW',
+              'LAX':'US','SJC':'US','SEA':'US','ORD':'US','EWR':'US','IAD':'US',
+              'DFW':'US','MIA':'US','ATL':'US','JFK':'US','BOS':'US','DEN':'US','LAS':'US',
+              'LHR':'GB','MAN':'GB',
+              'CDG':'FR','LYS':'FR',
+              'FRA':'DE','MUC':'DE','BER':'DE',
+              'AMS':'NL',
+              'ARN':'SE','CPH':'DK','OSL':'NO','HEL':'FI',
+              'ZRH':'CH','VIE':'AT','BCN':'ES','FCO':'IT','MXP':'IT',
+              'SYD':'AU','MEL':'AU','BNE':'AU','PER':'AU',
+              'AKL':'NZ',
+              'YYZ':'CA','YVR':'CA','YUL':'CA',
+              'GRU':'BR','SCL':'CL','BOG':'CO','EZE':'AR',
+              'JNB':'ZA','NBO':'KE',
+              'DXB':'AE','DOH':'QA','RUH':'SA',
+              'BOM':'IN','DEL':'IN','BLR':'IN','MAA':'IN',
+              'KUL':'MY','CGK':'ID','BKK':'TH','MNL':'PH',
+          }
+
+          CC_EMOJI = {
+              'HK':'🇭🇰','SG':'🇸🇬','KR':'🇰🇷','JP':'🇯🇵','TW':'🇹🇼',
+              'US':'🇺🇸','GB':'🇬🇧','FR':'🇫🇷','DE':'🇩🇪','NL':'🇳🇱',
+              'SE':'🇸🇪','CH':'🇨🇭','AU':'🇦🇺','NZ':'🇳🇿','CA':'🇨🇦',
+              'IN':'🇮🇳','BR':'🇧🇷','ZA':'🇿🇦','AE':'🇦🇪','TR':'🇹🇷',
+              'MY':'🇲🇾','TH':'🇹🇭','ID':'🇮🇩','PH':'🇵🇭',
+              'AT':'🇦🇹','ES':'🇪🇸','IT':'🇮🇹','DK':'🇩🇰','NO':'🇳🇴',
+              'FI':'🇫🇮','BE':'🇧🇪',
+          }
+
+          # 按延迟排序，每个 IP 查 CF colo
+          rows.sort(key=lambda r: float(r.get('平均延迟','9999').replace('ms','')))
+
+          cc_nodes = {}   # cc -> [(ip, latency, speed)]
+          queried = set()
+
+          TARGET_CC = {'HK','SG','KR','JP','TW','US','GB','FR','DE','NL','AU','CA','IN','TR','MY'}
+          PER_CC = 3      # 每个国家保留3个最优节点
+
+          for row in rows:
+              if all(len(v) >= PER_CC for cc, v in cc_nodes.items() if cc in TARGET_CC) \
+                 and len(cc_nodes) >= len(TARGET_CC):
+                  break
+
+              ip = row.get('IP地址', '').strip()
+              if not ip or ip in queried:
+                  continue
+              queried.add(ip)
+
+              latency = row.get('平均延迟', '?')
+              speed   = row.get('下载速度 (MB/s)', '0')
+
+              # 查 CF colo
+              try:
+                  req = urllib.request.Request(
+                      f"http://{ip}/cdn-cgi/trace",
+                      headers={'Host':'speed.cloudflare.com','User-Agent':'curl/7'}
+                  )
+                  with urllib.request.urlopen(req, timeout=3) as r:
+                      d = dict(l.split('=',1) for l in r.read().decode().strip().split('\n') if '=' in l)
+                  colo = d.get('colo','').strip()
+                  loc  = d.get('loc','').strip()
+              except:
+                  colo, loc = '', ''
+
+              cc = IATA_TO_CC.get(colo, loc)
+              if not cc:
+                  continue
+
+              if cc not in cc_nodes:
+                  cc_nodes[cc] = []
+              if len(cc_nodes[cc]) < PER_CC:
+                  cc_nodes[cc].append((ip, latency, speed, colo))
+                  emoji = CC_EMOJI.get(cc, '')
+                  print(f"  ✅ {emoji}{cc} {ip}  {latency}  {speed}MB/s  [{colo}]")
+
+          # 生成 ADD.txt（优先热门国家排序）
+          PRIORITY = ['HK','JP','SG','KR','TW','US','GB','DE','FR','NL','AU','CA','IN','MY','TH','TR']
+          lines = []
+          cc_count = {}
+          for cc in PRIORITY:
+              for ip, lat, spd, colo in cc_nodes.get(cc, []):
+                  emoji = CC_EMOJI.get(cc, '')
+                  cc_count[cc] = cc_count.get(cc, 0) + 1
+                  lines.append(f"{ip}:443#{emoji}{cc}-{cc_count[cc]:02d}")
+
+          # 补充其他地区
+          for cc, nodes in cc_nodes.items():
+              if cc in PRIORITY:
+                  continue
+              for ip, lat, spd, colo in nodes:
+                  emoji = CC_EMOJI.get(cc, '')
+                  cc_count[cc] = cc_count.get(cc, 0) + 1
+                  lines.append(f"{ip}:443#{emoji}{cc}-{cc_count[cc]:02d}")
+
+          with open('/tmp/ADD.txt', 'w') as f:
+              f.write('\n'.join(lines))
+
+          print(f"\n生成 {len(lines)} 个节点，覆盖 {len(cc_nodes)} 个国家/地区")
+          print('\n'.join(lines))
+          PYEOF
+
+      - name: Update ADD.txt via Worker API
+        env:
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          WORKER_TOKEN: ${{ secrets.WORKER_TOKEN }}
+          WORKER_PASSWORD: ${{ secrets.WORKER_PASSWORD }}
+        run: |
+          if [ ! -s /tmp/ADD.txt ]; then
+            echo "ADD.txt 为空，跳过更新"
+            exit 0
+          fi
+
+          echo "节点内容预览:"
+          cat /tmp/ADD.txt
+
+          # 1. 登录获取 cookie
+          LOGIN_RESP=$(curl -s -c /tmp/cookie.txt -b /tmp/cookie.txt \
+            -X POST "${WORKER_URL}/login" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -H "User-Agent: Mozilla/5.0" \
+            -d "password=${WORKER_PASSWORD}" \
+            -w "\n%{http_code}")
+          HTTP_CODE=$(echo "$LOGIN_RESP" | tail -1)
+          echo "登录状态码: $HTTP_CODE"
+
+          # 2. 上传 ADD.txt
+          UPLOAD_RESP=$(curl -s -c /tmp/cookie.txt -b /tmp/cookie.txt \
+            -X POST "${WORKER_URL}/admin/ADD.txt" \
+            -H "Content-Type: text/plain;charset=UTF-8" \
+            -H "User-Agent: Mozilla/5.0" \
+            --data-binary @/tmp/ADD.txt)
+          echo "上传结果: $UPLOAD_RESP"
+
+      - name: Save result as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: speedtest-result-${{ github.run_number }}
+          path: |
+            /tmp/result.csv
+            /tmp/ADD.txt
+          retention-days: 7
