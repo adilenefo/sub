@@ -5,7 +5,18 @@ import csv, os, sys
 UUID = "4c56333c-6445-415b-9849-e8b239e78b45"
 HOST = "vless.xbrou.com"
 
-PROXYIP = "nrt.proxyip.cmliussss.net"
+PROXYIP = "auto"
+
+REGIONS = {
+    "HK": "🇭🇰 香港",
+    "JP": "🇯🇵 日本",
+    "SG": "🇸🇬 新加坡",
+    "KR": "🇰🇷 韩国",
+    "TW": "🇹🇼 台湾",
+    "US": "🇺🇸 美国",
+    "UK": "🇬🇧 英国",
+    "DE": "🇩🇪 德国",
+}
 
 PORTS = [443, 2053, 2096, 8443]
 
@@ -35,18 +46,15 @@ else:
     ]
 
 lines = []
-idx = 0
-for ip_entry in best_ips:
-    ip = ip_entry[0]
-    for port in PORTS:
-        idx += 1
-        name = f"🇯🇵 日本{idx:02d}"
-        path = f"/proxyip={PROXYIP}"
+for cc, label in REGIONS.items():
+    for i, port in enumerate(PORTS):
+        ip = best_ips[i % len(best_ips)][0]
+        name = f"{label}{i+1:02d}"
         line = (
             f"{name} = trojan, {ip}, {port}, "
             f"password={UUID}, "
             f"sni={HOST}, "
-            f"ws=true, ws-path={path}, ws-headers=Host:{HOST}, "
+            f"ws=true, ws-path=/, ws-headers=Host:{HOST}, "
             f"tfo=true, udp-relay=true"
         )
         lines.append(line)
