@@ -7,12 +7,11 @@ name: CF Speedtest Auto Update
 
 permissions:
   contents: read
-  actions: write
 
 jobs:
   speedtest:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     env:
       WORKER_URL: ${{ secrets.WORKER_URL }}
       WORKER_PASSWORD: ${{ secrets.WORKER_PASSWORD }}
@@ -21,139 +20,21 @@ jobs:
       - name: Download CloudflareSpeedTest
         run: |
           ASSET=$(curl -s https://api.github.com/repos/XIU2/CloudflareSpeedTest/releases/latest \
-            | grep -o '"browser_download_url": "[^"]*linux_amd64[^"]*"' | head -1 | cut -d'"' -f4)
+            | python3 -c "import json,sys; [print(a['browser_download_url']) for a in json.load(sys.stdin)['assets'] if 'linux_amd64' in a['name']]" \
+            | head -1)
           curl -sL "$ASSET" | tar -xz -C /tmp
           CFST=$(find /tmp -maxdepth 1 \( -name 'cfst' -o -name 'CloudflareST' \) | head -1)
-          cp "$CFST" /tmp/CloudflareST && chmod +x /tmp/CloudflareST
+          cp "$CFST" /tmp/cfst && chmod +x /tmp/cfst
 
-      - name: Generate CF IP list & run speedtest
+      - name: Fetch CF IPs and run speedtest
         run: |
-          python3 - <<'EOF'
-          import random, subprocess, sys
-          segs = [
-            "103.21.244","103.22.200","103.31.4",
-            "104.16.0","104.16.64","104.16.128","104.16.192",
-            "104.17.0","104.17.64","104.17.128","104.17.192",
-            "104.18.0","104.18.64","104.18.128","104.18.192",
-            "104.19.0","104.19.64","104.19.128",
-            "104.20.0","104.20.64","104.20.128",
-            "104.21.0","104.21.64","104.21.128",
-            "104.22.0","104.22.64",
-            "104.23.0","104.23.64",
-            "104.24.0","104.24.64",
-            "104.25.0","104.25.64",
-            "104.26.0","104.26.64",
-            "104.27.0",
-            "108.162.192","108.162.208","108.162.224","108.162.240",
-            "141.101.64","141.101.80","141.101.96","141.101.112",
-            "162.158.0","162.158.64","162.158.128","162.158.192",
-            "162.159.0","162.159.64","162.159.128","162.159.192",
-            "172.64.0","172.64.32","172.64.64","172.64.96",
-            "172.64.128","172.64.160","172.64.192","172.64.224",
-            "172.65.0","172.65.64","172.65.128","172.65.192",
-            "172.66.0","172.66.64","172.66.128","172.66.192",
-            "172.67.0","172.67.64","172.67.128","172.67.192",
-            "173.245.48","173.245.52","173.245.56","173.245.60",
-            "188.114.96","188.114.100","188.114.104","188.114.108",
-            "190.93.240","190.93.244","190.93.248","190.93.252",
-            "197.234.240","197.234.244","197.234.248","197.234.252",
-            "198.41.128","198.41.192",
-            "8.35.211","8.39.125",
-          ]
-          random.seed(42)
-          ips = [f"{s}.{random.randint(1,254)}" for s in segs for _ in range(8)]
-          with open('/tmp/cf_ips.txt','w') as f:
-            f.write('\n'.join(ips))
-          print(f"Generated {len(ips)} IPs")
-          EOF
-          wc -l /tmp/cf_ips.txt
-          /tmp/CloudflareST \
-            -f /tmp/cf_ips.txt \
-            -n 200 -t 4 -tp 443 -tl 600 -p 30 -dd \
-            -o /tmp/result.csv
-          echo "=== result rows: $(wc -l < /tmp/result.csv) ==="
+          echo "aW1wb3J0IHVybGxpYi5yZXF1ZXN0LCByYW5kb20sIG9zLCBzeXMKCiMgQ0Yg5LyY6LSoIElQIOadpea6kO+8iOi/meS6m+mDveaYr+ekvuWMuumVv+acn+e7tOaKpOeahOWPr+eUqCBJUO+8iQpTT1VSQ0VTID0gWwogICAgImh0dHBzOi8vYWRkcmVzc2VzYXBpLjA5MDIyNy54eXovQ2xvdWRGbGFyZVllcyIsCiAgICAiaHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2NtbGl1L1dvcmtlclZsZXNzMnN1Yi9tYWluL2FkZHJlc3Nlc2FwaS50eHQiLAogICAgImh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS95bXl1dXUvSVBEQi9yZWZzL2hlYWRzL21haW4vYmVzdGNmLnR4dCIsCl0KCmFsbF9pcHMgPSBbXQpmb3IgdXJsIGluIFNPVVJDRVM6CiAgICB0cnk6CiAgICAgICAgcmVxID0gdXJsbGliLnJlcXVlc3QuUmVxdWVzdCh1cmwsIGhlYWRlcnM9eydVc2VyLUFnZW50JzogJ2N1cmwvNyd9KQogICAgICAgIHdpdGggdXJsbGliLnJlcXVlc3QudXJsb3BlbihyZXEsIHRpbWVvdXQ9OCkgYXMgcjoKICAgICAgICAgICAgbGluZXMgPSByLnJlYWQoKS5kZWNvZGUoKS5zdHJpcCgpLnNwbGl0KCdcbicpCiAgICAgICAgaXBzID0gW2wuc3RyaXAoKS5zcGxpdCgnOicpWzBdLnNwbGl0KCcjJylbMF0uc3RyaXAoKSBmb3IgbCBpbiBsaW5lcyBpZiBsLnN0cmlwKCkgYW5kIG5vdCBsLnN0YXJ0c3dpdGgoJzwnKV0KICAgICAgICBpcHMgPSBbaXAgZm9yIGlwIGluIGlwcyBpZiBpcCBhbmQgJy4nIGluIGlwXQogICAgICAgIHByaW50KGYi5p2l5rqQIHt1cmwuc3BsaXQoJy8nKVsyXX06IHtsZW4oaXBzKX0gSVBzIikKICAgICAgICBhbGxfaXBzLmV4dGVuZChpcHMpCiAgICBleGNlcHQgRXhjZXB0aW9uIGFzIGU6CiAgICAgICAgcHJpbnQoZiLmnaXmupDlpLHotKUge3VybH06IHtlfSIpCgojIOWOu+mHjQphbGxfaXBzID0gbGlzdChkaWN0LmZyb21rZXlzKGFsbF9pcHMpKQpwcmludChmIuWOu+mHjeWQjuWFsSB7bGVuKGFsbF9pcHMpfSDkuKogSVAiKQoKaWYgbm90IGFsbF9pcHM6CiAgICAjIGZhbGxiYWNrOiBDRiDlrpjmlrkgSVAg5q616ZqP5py66YeH5qC3CiAgICBzZWdzID0gWwogICAgICAgICIxMDQuMTYiLCIxMDQuMTciLCIxMDQuMTgiLCIxMDQuMTkiLCIxMDQuMjAiLCIxMDQuMjEiLCIxMDQuMjIiLCIxMDQuMjMiLAogICAgICAgICIxMDQuMjQiLCIxMDQuMjUiLCIxMDQuMjYiLCIxMDQuMjciLCIxNzIuNjQiLCIxNzIuNjUiLCIxNzIuNjYiLCIxNzIuNjciLAogICAgICAgICIxNjIuMTU4IiwiMTYyLjE1OSIsIjEwOC4xNjIiLCIxNDEuMTAxIiwiMTkwLjkzIiwiMTg4LjExNCIsIjE5Ny4yMzQiLAogICAgICAgICIxOTguNDEiLCIxNzMuMjQ1IiwiMTAzLjIxIiwiMTAzLjIyIiwiMTAzLjMxIiwKICAgIF0KICAgIHJhbmRvbS5zZWVkKCkKICAgIGFsbF9pcHMgPSBbZiJ7c30ue3JhbmRvbS5yYW5kaW50KDAsMjU1KX0ue3JhbmRvbS5yYW5kaW50KDEsMjU0KX0iIGZvciBzIGluIHNlZ3MgZm9yIF8gaW4gcmFuZ2UoMTApXQogICAgcHJpbnQoZiLkvb/nlKggZmFsbGJhY2sg6ZqP5py66YeH5qC3OiB7bGVuKGFsbF9pcHMpfSBJUHMiKQoKIyDkv53lrZgKd2l0aCBvcGVuKCcvdG1wL2NmX2lwcy50eHQnLCAndycpIGFzIGY6CiAgICBmLndyaXRlKCdcbicuam9pbihhbGxfaXBzKSkKcHJpbnQoZiLlt7LlhpnlhaUgL3RtcC9jZl9pcHMudHh0ICh7bGVuKGFsbF9pcHMpfSDooYwpIikK" | base64 -d > /tmp/gen_ips.py
+          python3 /tmp/gen_ips.py
+          /tmp/cfst -f /tmp/cf_ips.txt -n 200 -t 4 -tp 443 -tl 600 -p 30 -dd -o /tmp/result.csv
+          echo "测速结果行数: $(wc -l < /tmp/result.csv)"
           head -3 /tmp/result.csv
 
       - name: Process results and update nodes
         run: |
-          python3 - <<'EOF'
-          import csv, os, requests, time
-
-          EMOJI = {
-            'HK':'🇭🇰','SG':'🇸🇬','JP':'🇯🇵','KR':'🇰🇷','TW':'🇹🇼',
-            'US':'🇺🇸','GB':'🇬🇧','DE':'🇩🇪','FR':'🇫🇷','NL':'🇳🇱',
-            'AU':'🇦🇺','CA':'🇨🇦','IN':'🇮🇳','MY':'🇲🇾','BR':'🇧🇷',
-            'IT':'🇮🇹','ES':'🇪🇸','SE':'🇸🇪','CH':'🇨🇭','AE':'🇦🇪',
-            'TR':'🇹🇷','PL':'🇵🇱','AT':'🇦🇹','SG':'🇸🇬',
-          }
-
-          rows = []
-          with open('/tmp/result.csv', newline='') as f:
-            for row in csv.DictReader(f):
-              ip = row.get('IP 地址', row.get('IP','')).strip()
-              try:
-                delay = float(row.get('平均延迟', row.get('Avg Delay','9999')).replace('ms','').strip())
-              except:
-                delay = 9999.0
-              if ip and delay < 9000:
-                rows.append((delay, ip))
-
-          rows.sort()
-          print(f"有效 IP 总数: {len(rows)}, 最低延迟: {rows[0][0]:.2f}ms, 最高: {rows[-1][0]:.2f}ms")
-
-          # 取延迟最低的前50个查归属地
-          top50 = [ip for _, ip in rows[:50]]
-          print(f"查询前 {len(top50)} 个 IP 的归属地...")
-
-          geo = {}
-          for i in range(0, len(top50), 100):
-            batch = top50[i:i+100]
-            try:
-              r = requests.post(
-                'http://ip-api.com/batch?fields=query,countryCode',
-                json=[{'query': ip} for ip in batch], timeout=15)
-              for item in r.json():
-                geo[item['query']] = item.get('countryCode','')
-            except Exception as e:
-              print(f"ip-api 查询失败: {e}")
-            time.sleep(1)
-
-          print(f"查到归属: {len(geo)} 个, 分布: { {cc:sum(1 for v in geo.values() if v==cc) for cc in set(geo.values()) if cc} }")
-
-          # 每国最多3个，补到30
-          cc_cnt = {}
-          nodes = []
-          for delay, ip in rows:
-            if len(nodes) >= 30:
-              break
-            cc = geo.get(ip, '')
-            if cc:
-              cc_cnt[cc] = cc_cnt.get(cc,0) + 1
-              if cc_cnt[cc] > 3:
-                continue
-              name = f"{EMOJI.get(cc,'')}{cc}-{cc_cnt[cc]:02d}"
-            else:
-              name = f"CF-{len(nodes)+1:02d}"
-            nodes.append(f"{ip}:443#{name}")
-            print(f"  {name}  {ip}  {delay:.2f}ms")
-
-          add_txt = '\n'.join(nodes)
-          print(f"\n共 {len(nodes)} 个节点:")
-          print(add_txt)
-
-          # 登录并写入 ADD.txt
-          url = os.environ['WORKER_URL']
-          pwd = os.environ['WORKER_PASSWORD']
-          s = requests.Session()
-          s.headers['User-Agent'] = 'Mozilla/5.0'
-          r = s.post(f'{url}/login',
-                     data=f'password={pwd}',
-                     headers={'Content-Type':'application/x-www-form-urlencoded'},
-                     timeout=15)
-          print(f"\n登录: {r.status_code}")
-          r2 = s.post(f'{url}/admin/ADD.txt',
-                      data=add_txt.encode(),
-                      headers={'Content-Type':'text/plain;charset=UTF-8'},
-                      timeout=15)
-          print(f"写入 ADD.txt: {r2.status_code} {r2.text[:100]}")
-          EOF
+          echo "aW1wb3J0IGNzdiwgb3MsIHN5cywganNvbgppbXBvcnQgdXJsbGliLnJlcXVlc3QsIHVybGxpYi5wYXJzZQoKV09SS0VSX1VSTCAgICAgID0gb3MuZW52aXJvblsnV09SS0VSX1VSTCddCldPUktFUl9QQVNTV09SRCA9IG9zLmVudmlyb25bJ1dPUktFUl9QQVNTV09SRCddCgojIOivu+a1i+mAn+e7k+aenApyb3dzID0gW10KZm9yIGZfbmFtZSBpbiBbJy90bXAvcmVzdWx0LmNzdiddOgogICAgaWYgbm90IG9zLnBhdGguZXhpc3RzKGZfbmFtZSk6CiAgICAgICAgY29udGludWUKICAgIHdpdGggb3BlbihmX25hbWUsIGVuY29kaW5nPSd1dGYtOC1zaWcnKSBhcyBmOgogICAgICAgIGZvciByb3cgaW4gY3N2LkRpY3RSZWFkZXIoZik6CiAgICAgICAgICAgIGlwICAgID0gcm93LmdldCgnSVAg5Zyw5Z2AJywgcm93LmdldCgnSVAnLCAnJykpLnN0cmlwKCkKICAgICAgICAgICAgZGVsYXkgPSByb3cuZ2V0KCflubPlnYflu7bov58nLCByb3cuZ2V0KCdBdmcgRGVsYXknLCAnOTk5OScpKS5yZXBsYWNlKCdtcycsJycpLnN0cmlwKCkKICAgICAgICAgICAgdHJ5OgogICAgICAgICAgICAgICAgZGVsYXkgPSBmbG9hdChkZWxheSkKICAgICAgICAgICAgZXhjZXB0OgogICAgICAgICAgICAgICAgY29udGludWUKICAgICAgICAgICAgaWYgaXAgYW5kIGRlbGF5IDwgOTAwMDoKICAgICAgICAgICAgICAgIHJvd3MuYXBwZW5kKChkZWxheSwgaXApKQoKcm93cy5zb3J0KCkKcHJpbnQoZiLmtYvpgJ/nu5PmnpzlhbEge2xlbihyb3dzKX0g5Liq5pyJ5pWISVAiKQppZiBub3Qgcm93czoKICAgIHByaW50KCJFUlJPUjog5peg5pyJ5pWI5rWL6YCf57uT5p6cIikKICAgIHN5cy5leGl0KDEpCgojIOWPluWJjSAzMCDkuKrvvIzlkb3lkI3kuLogQ0Yt5LyY6YCJLTAxIH4gQ0Yt5LyY6YCJLTMwCiMgU3VyZ2UgdXJsLXRlc3Qg5Lya6Ieq5Yqo5LuO5pys5py65rWL6YCf6YCJ5pyA5b+r55qEClRPUCA9IHJvd3NbOjMwXQpub2RlcyA9IFtmIntpcH06NDQzI0NGLeS8mOmAiS17aTowMmR9IiBmb3IgaSwgKGRlbGF5LCBpcCkgaW4gZW51bWVyYXRlKFRPUCwgMSldCgpwcmludChmIueUn+aIkCB7bGVuKG5vZGVzKX0g5Liq6IqC54K577yI5bu26L+f6IyD5Zu0IHtUT1BbMF1bMF06LjFmfW1zIH4ge1RPUFstMV1bMF06LjFmfW1z77yJOiIpCmZvciBuIGluIG5vZGVzWzo1XToKICAgIHByaW50KCcgJywgbikKcHJpbnQoJyAgLi4uJykKCiMg55m75b2VIFdvcmtlciDojrflj5YgY29va2llCmxvZ2luX2RhdGEgPSB1cmxsaWIucGFyc2UudXJsZW5jb2RlKHsncGFzc3dvcmQnOiBXT1JLRVJfUEFTU1dPUkR9KS5lbmNvZGUoKQpjb29raWVfaGFuZGxlciA9IHVybGxpYi5yZXF1ZXN0LkhUVFBDb29raWVQcm9jZXNzb3IoKQpvcGVuZXIgPSB1cmxsaWIucmVxdWVzdC5idWlsZF9vcGVuZXIoY29va2llX2hhbmRsZXIpCnJlcSA9IHVybGxpYi5yZXF1ZXN0LlJlcXVlc3QoCiAgICBmIntXT1JLRVJfVVJMfS9sb2dpbiIsCiAgICBkYXRhPWxvZ2luX2RhdGEsCiAgICBoZWFkZXJzPXsnQ29udGVudC1UeXBlJzogJ2FwcGxpY2F0aW9uL3gtd3d3LWZvcm0tdXJsZW5jb2RlZCcsICdVc2VyLUFnZW50JzogJ01vemlsbGEvNS4wJ30sCikKb3BlbmVyLm9wZW4ocmVxKQoKIyDmj5Dlj5YgY29va2llIOWtl+espuS4sgpjb29raWVzID0gJzsgJy5qb2luKGYie2MubmFtZX09e2MudmFsdWV9IiBmb3IgYyBpbiBjb29raWVfaGFuZGxlci5jb29raWVqYXIpCnByaW50KGYi55m75b2VIGNvb2tpZToge2Nvb2tpZXNbOjQwXX0uLi4iKQoKIyBQT1NUIEFERC50eHQKY29udGVudCA9ICdcbicuam9pbihub2RlcykuZW5jb2RlKCd1dGYtOCcpCnJlcTIgPSB1cmxsaWIucmVxdWVzdC5SZXF1ZXN0KAogICAgZiJ7V09SS0VSX1VSTH0vYWRtaW4vQURELnR4dCIsCiAgICBkYXRhPWNvbnRlbnQsCiAgICBtZXRob2Q9J1BPU1QnLAogICAgaGVhZGVycz17CiAgICAgICAgJ0NvbnRlbnQtVHlwZSc6ICd0ZXh0L3BsYWluO2NoYXJzZXQ9VVRGLTgnLAogICAgICAgICdVc2VyLUFnZW50JzogJ01vemlsbGEvNS4wJywKICAgICAgICAnQ29va2llJzogY29va2llcywKICAgIH0sCikKcmVzcCA9IG9wZW5lci5vcGVuKHJlcTIpCnJlc3VsdCA9IGpzb24ubG9hZHMocmVzcC5yZWFkKCkuZGVjb2RlKCkpCnByaW50KGYiQURELnR4dCDmm7TmlrDnu5Pmnpw6IHtyZXN1bHR9IikK" | base64 -d > /tmp/process_results.py
+          python3 /tmp/process_results.py
