@@ -13,188 +13,147 @@ jobs:
   speedtest:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      WORKER_URL: ${{ secrets.WORKER_URL }}
+      WORKER_PASSWORD: ${{ secrets.WORKER_PASSWORD }}
 
     steps:
       - name: Download CloudflareSpeedTest
         run: |
-          RELEASE=$(curl -s https://api.github.com/repos/XIU2/CloudflareSpeedTest/releases/latest)
-          ASSET=$(echo "$RELEASE" | grep -o '"browser_download_url": "[^"]*linux_amd64[^"]*"' | head -1 | cut -d'"' -f4)
-          echo "Downloading: $ASSET"
+          ASSET=$(curl -s https://api.github.com/repos/XIU2/CloudflareSpeedTest/releases/latest \
+            | grep -o '"browser_download_url": "[^"]*linux_amd64[^"]*"' | head -1 | cut -d'"' -f4)
           curl -sL "$ASSET" | tar -xz -C /tmp
-          CFST=$(find /tmp -maxdepth 1 \( -name 'cfst' -o -name 'CloudflareST' \) 2>/dev/null | head -1)
-          echo "Binary: $CFST"
+          CFST=$(find /tmp -maxdepth 1 \( -name 'cfst' -o -name 'CloudflareST' \) | head -1)
           cp "$CFST" /tmp/CloudflareST && chmod +x /tmp/CloudflareST
 
-      - name: Generate CF IP list
+      - name: Generate CF IP list & run speedtest
         run: |
-          python3 << 'PYEOF'
-          import random
-
-          # CF 官方 IP 段（/22 小段采样，每段取 50 个，共约 600 个 IP）
-          segments = [
-              # AS13335 全球段
-              "103.21.244", "103.22.200", "103.31.4",
-              "104.16.0", "104.16.64", "104.16.128", "104.16.192",
-              "104.17.0", "104.17.64", "104.17.128", "104.17.192",
-              "104.18.0", "104.18.64", "104.18.128", "104.18.192",
-              "104.19.0", "104.19.64", "104.19.128",
-              "104.20.0", "104.20.64", "104.20.128",
-              "104.21.0", "104.21.64", "104.21.128",
-              "104.22.0", "104.22.64",
-              "104.23.0", "104.23.64",
-              "104.24.0", "104.24.64",
-              "104.25.0", "104.25.64",
-              "104.26.0", "104.26.64",
-              "104.27.0",
-              "108.162.192", "108.162.208", "108.162.224", "108.162.240",
-              "131.0.72", "131.0.73", "131.0.74", "131.0.75",
-              "141.101.64", "141.101.80", "141.101.96", "141.101.112",
-              "162.158.0", "162.158.64", "162.158.128", "162.158.192",
-              "162.159.0", "162.159.64", "162.159.128", "162.159.192",
-              "172.64.0", "172.64.32", "172.64.64", "172.64.96",
-              "172.64.128", "172.64.160", "172.64.192", "172.64.224",
-              "172.65.0", "172.65.64", "172.65.128", "172.65.192",
-              "172.66.0", "172.66.64", "172.66.128", "172.66.192",
-              "172.67.0", "172.67.64", "172.67.128", "172.67.192",
-              "173.245.48", "173.245.52", "173.245.56", "173.245.60",
-              "188.114.96", "188.114.100", "188.114.104", "188.114.108",
-              "190.93.240", "190.93.244", "190.93.248", "190.93.252",
-              "197.234.240", "197.234.244", "197.234.248", "197.234.252",
-              "198.41.128", "198.41.192",
-              "8.35.211", "8.39.125",
+          python3 - <<'EOF'
+          import random, subprocess, sys
+          segs = [
+            "103.21.244","103.22.200","103.31.4",
+            "104.16.0","104.16.64","104.16.128","104.16.192",
+            "104.17.0","104.17.64","104.17.128","104.17.192",
+            "104.18.0","104.18.64","104.18.128","104.18.192",
+            "104.19.0","104.19.64","104.19.128",
+            "104.20.0","104.20.64","104.20.128",
+            "104.21.0","104.21.64","104.21.128",
+            "104.22.0","104.22.64",
+            "104.23.0","104.23.64",
+            "104.24.0","104.24.64",
+            "104.25.0","104.25.64",
+            "104.26.0","104.26.64",
+            "104.27.0",
+            "108.162.192","108.162.208","108.162.224","108.162.240",
+            "141.101.64","141.101.80","141.101.96","141.101.112",
+            "162.158.0","162.158.64","162.158.128","162.158.192",
+            "162.159.0","162.159.64","162.159.128","162.159.192",
+            "172.64.0","172.64.32","172.64.64","172.64.96",
+            "172.64.128","172.64.160","172.64.192","172.64.224",
+            "172.65.0","172.65.64","172.65.128","172.65.192",
+            "172.66.0","172.66.64","172.66.128","172.66.192",
+            "172.67.0","172.67.64","172.67.128","172.67.192",
+            "173.245.48","173.245.52","173.245.56","173.245.60",
+            "188.114.96","188.114.100","188.114.104","188.114.108",
+            "190.93.240","190.93.244","190.93.248","190.93.252",
+            "197.234.240","197.234.244","197.234.248","197.234.252",
+            "198.41.128","198.41.192",
+            "8.35.211","8.39.125",
           ]
-
-          ips = []
           random.seed(42)
-          for seg in segments:
-              for _ in range(8):
-                  host = random.randint(1, 254)
-                  ips.append(f"{seg}.{host}")
-
-          with open('/tmp/cf_ips.txt', 'w') as f:
-              f.write('\n'.join(ips))
+          ips = [f"{s}.{random.randint(1,254)}" for s in segs for _ in range(8)]
+          with open('/tmp/cf_ips.txt','w') as f:
+            f.write('\n'.join(ips))
           print(f"Generated {len(ips)} IPs")
-          PYEOF
-
-      - name: Run speedtest
-        run: |
+          EOF
           wc -l /tmp/cf_ips.txt
           /tmp/CloudflareST \
             -f /tmp/cf_ips.txt \
-            -n 200 \
-            -t 4 \
-            -tp 443 \
-            -tl 600 \
-            -p 30 \
-            -dd \
+            -n 200 -t 4 -tp 443 -tl 600 -p 30 -dd \
             -o /tmp/result.csv
-          echo "测速完成，结果行数: $(wc -l < /tmp/result.csv 2>/dev/null || echo 0)"
-          head -5 /tmp/result.csv 2>/dev/null || echo "result.csv 不存在"
+          echo "=== result rows: $(wc -l < /tmp/result.csv) ==="
+          head -3 /tmp/result.csv
 
       - name: Process results and update nodes
-        env:
-          WORKER_URL: ${{ secrets.WORKER_URL }}
-          WORKER_PASSWORD: ${{ secrets.WORKER_PASSWORD }}
         run: |
-          python3 << 'PYEOF'
-          import csv, os, requests, time, json
+          python3 - <<'EOF'
+          import csv, os, requests, time
 
-          COUNTRY_EMOJI = {
-              'HK':'🇭🇰', 'SG':'🇸🇬', 'JP':'🇯🇵', 'KR':'🇰🇷', 'TW':'🇹🇼',
-              'US':'🇺🇸', 'GB':'🇬🇧', 'DE':'🇩🇪', 'FR':'🇫🇷', 'NL':'🇳🇱',
-              'AU':'🇦🇺', 'CA':'🇨🇦', 'IN':'🇮🇳', 'SY':'🇸🇾', 'MY':'🇲🇾',
-              'BR':'🇧🇷', 'IT':'🇮🇹', 'ES':'🇪🇸', 'SE':'🇸🇪', 'CH':'🇨🇭',
-              'AE':'🇦🇪', 'TR':'🇹🇷', 'RU':'🇷🇺', 'PL':'🇵🇱', 'AT':'🇦🇹',
+          EMOJI = {
+            'HK':'🇭🇰','SG':'🇸🇬','JP':'🇯🇵','KR':'🇰🇷','TW':'🇹🇼',
+            'US':'🇺🇸','GB':'🇬🇧','DE':'🇩🇪','FR':'🇫🇷','NL':'🇳🇱',
+            'AU':'🇦🇺','CA':'🇨🇦','IN':'🇮🇳','MY':'🇲🇾','BR':'🇧🇷',
+            'IT':'🇮🇹','ES':'🇪🇸','SE':'🇸🇪','CH':'🇨🇭','AE':'🇦🇪',
+            'TR':'🇹🇷','PL':'🇵🇱','AT':'🇦🇹','SG':'🇸🇬',
           }
-          TARGET_CC = {'HK','SG','JP','KR','TW','US','GB','DE','FR','NL','AU','CA','IN','MY','BR','TR','AE'}
 
-          # 读取测速结果
-          good_ips = []
-          try:
-              with open('/tmp/result.csv', newline='') as f:
-                  reader = csv.DictReader(f)
-                  for row in reader:
-                      ip = row.get('IP', '').strip()
-                      delay = float(row.get('平均延迟', row.get('Avg Delay', '9999')).replace('ms','').strip() or 9999)
-                      speed = float(row.get('下载速度 (MB/s)', row.get('Download Speed', '0')).strip() or 0)
-                      if ip and delay < 500:
-                          good_ips.append((delay, speed, ip))
-          except Exception as e:
-              print(f"读取 CSV 失败: {e}")
-
-          good_ips.sort(key=lambda x: (x[0], -x[1]))
-          print(f"延迟<200ms 的优质 IP: {len(good_ips)} 个")
-
-          if not good_ips:
-              print("无可用 IP，退出")
-              exit(0)
-
-          # 取前 50 个查归属地
-          top_ips = [ip for _, _, ip in good_ips[:50]]
-          print(f"批量查询 {len(top_ips)} 个 IP 归属地...")
-
-          # ip-api.com 批量接口（每次最多100个）
-          geo = {}
-          batch_size = 100
-          for i in range(0, len(top_ips), batch_size):
-              batch = top_ips[i:i+batch_size]
+          rows = []
+          with open('/tmp/result.csv', newline='') as f:
+            for row in csv.DictReader(f):
+              ip = row.get('IP','').strip()
               try:
-                  resp = requests.post(
-                      'http://ip-api.com/batch?fields=query,countryCode',
-                      json=[{'query': ip} for ip in batch],
-                      timeout=10
-                  )
-                  for item in resp.json():
-                      geo[item['query']] = item.get('countryCode', '')
-              except Exception as e:
-                  print(f"批量查询失败: {e}")
-              time.sleep(1)
+                delay = float(row.get('平均延迟','9999').replace('ms','').strip())
+              except:
+                delay = 9999.0
+              if ip and delay < 9000:
+                rows.append((delay, ip))
 
-          print(f"查到归属地: {len(geo)} 个")
+          rows.sort()
+          print(f"有效 IP 总数: {len(rows)}, 最低延迟: {rows[0][0]:.2f}ms, 最高: {rows[-1][0]:.2f}ms")
 
-          # 按国家分组，每国最多 3 个
-          cc_count = {}
+          # 取延迟最低的前50个查归属地
+          top50 = [ip for _, ip in rows[:50]]
+          print(f"查询前 {len(top50)} 个 IP 的归属地...")
+
+          geo = {}
+          for i in range(0, len(top50), 100):
+            batch = top50[i:i+100]
+            try:
+              r = requests.post(
+                'http://ip-api.com/batch?fields=query,countryCode',
+                json=[{'query': ip} for ip in batch], timeout=15)
+              for item in r.json():
+                geo[item['query']] = item.get('countryCode','')
+            except Exception as e:
+              print(f"ip-api 查询失败: {e}")
+            time.sleep(1)
+
+          print(f"查到归属: {len(geo)} 个, 分布: { {cc:sum(1 for v in geo.values() if v==cc) for cc in set(geo.values()) if cc} }")
+
+          # 每国最多3个，补到30
+          cc_cnt = {}
           nodes = []
-          for delay, speed, ip in good_ips[:50]:
-              cc = geo.get(ip, '')
-              if not cc:
-                  continue
-              cc_count[cc] = cc_count.get(cc, 0) + 1
-              if cc_count[cc] > 3:
-                  continue
-              emoji = COUNTRY_EMOJI.get(cc, '')
-              idx = cc_count[cc]
-              name = f"{emoji}{cc}-{idx:02d}"
-              nodes.append(f"{ip}:443#{name}")
-              print(f"  {name}  {ip}  {delay}ms  {speed:.1f}MB/s")
+          for delay, ip in rows:
+            if len(nodes) >= 30:
+              break
+            cc = geo.get(ip, '')
+            if cc:
+              cc_cnt[cc] = cc_cnt.get(cc,0) + 1
+              if cc_cnt[cc] > 3:
+                continue
+              name = f"{EMOJI.get(cc,'')}{cc}-{cc_cnt[cc]:02d}"
+            else:
+              name = f"CF-{len(nodes)+1:02d}"
+            nodes.append(f"{ip}:443#{name}")
+            print(f"  {name}  {ip}  {delay:.2f}ms")
 
-          # 补充：没有地理标注的优质 IP 直接按排名补到 30 个
-          for i, (delay, speed, ip) in enumerate(good_ips):
-              if len(nodes) >= 30:
-                  break
-              if ip not in [n.split(':')[0] for n in nodes]:
-                  nodes.append(f"{ip}:443#CF-{i+1:02d}")
+          add_txt = '\n'.join(nodes)
+          print(f"\n共 {len(nodes)} 个节点:")
+          print(add_txt)
 
-          print(f"\n最终节点数: {len(nodes)}")
-          add_content = '\n'.join(nodes)
-          print(add_content)
-
-          # 登录并保存
-          worker_url = os.environ['WORKER_URL']
-          password   = os.environ['WORKER_PASSWORD']
-
+          # 登录并写入 ADD.txt
+          url = os.environ['WORKER_URL']
+          pwd = os.environ['WORKER_PASSWORD']
           s = requests.Session()
-          s.headers.update({'User-Agent': 'Mozilla/5.0'})
-
-          r = s.post(f'{worker_url}/login',
-                     data=f'password={password}',
-                     headers={'Content-Type': 'application/x-www-form-urlencoded'},
-                     timeout=10)
-          print(f"\n登录状态: {r.status_code}")
-
-          r2 = s.post(f'{worker_url}/admin/ADD.txt',
-                      data=add_content.encode(),
-                      headers={'Content-Type': 'text/plain;charset=UTF-8'},
-                      timeout=10)
+          s.headers['User-Agent'] = 'Mozilla/5.0'
+          r = s.post(f'{url}/login',
+                     data=f'password={pwd}',
+                     headers={'Content-Type':'application/x-www-form-urlencoded'},
+                     timeout=15)
+          print(f"\n登录: {r.status_code}")
+          r2 = s.post(f'{url}/admin/ADD.txt',
+                      data=add_txt.encode(),
+                      headers={'Content-Type':'text/plain;charset=UTF-8'},
+                      timeout=15)
           print(f"写入 ADD.txt: {r2.status_code} {r2.text[:100]}")
-          PYEOF
+          EOF
