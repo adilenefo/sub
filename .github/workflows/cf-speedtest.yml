@@ -5,6 +5,10 @@ on:
     - cron: '0 0,6,12,18 * * *'   # 每6小时执行一次 (UTC)
   workflow_dispatch:               # 支持手动触发
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   speedtest:
     runs-on: ubuntu-latest
@@ -13,8 +17,20 @@ jobs:
     steps:
       - name: Download CloudflareSpeedTest
         run: |
-          curl -sL https://github.com/XIU2/CloudflareSpeedTest/releases/latest/download/CloudflareST_linux_amd64.tar.gz \
-            | tar -xz -C /tmp
+          DOWNLOAD_URL=$(curl -s https://api.github.com/repos/XIU2/CloudflareSpeedTest/releases/latest \
+            | python3 -c "import json,sys; assets=json.load(sys.stdin).get('assets',[]); [print(a['browser_download_url']) for a in assets if 'linux_amd64' in a['name']]" \
+            | head -1)
+          echo "下载地址: $DOWNLOAD_URL"
+          curl -sL "$DOWNLOAD_URL" | tar -xz -C /tmp
+          # 统一命名
+          [ -f /tmp/cfst ] && mv /tmp/cfst /tmp/CloudflareST
+          [ -f /tmp/CloudflareST_linux_amd64 ] && mv /tmp/CloudflareST_linux_amd64 /tmp/CloudflareST
+          ls /tmp/cf* /tmp/Cloud* 2>/dev/null || true
+          chmod +x /tmp/CloudflareST 2>/dev/null || chmod +x /tmp/cfst 2>/dev/null
+          # 找到实际可执行文件
+          CFST=$(find /tmp -maxdepth 1 -name 'cfst*' -o -name 'CloudflareST*' 2>/dev/null | grep -v '\.txt\|\.dat' | head -1)
+          echo "可执行文件: $CFST"
+          cp "$CFST" /tmp/CloudflareST 2>/dev/null || true
           chmod +x /tmp/CloudflareST
 
       - name: Generate IP list for each region
