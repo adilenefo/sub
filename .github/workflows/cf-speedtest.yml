@@ -2,7 +2,7 @@ name: CF IP SpeedTest & Update Nodes
 
 on:
   schedule:
-    - cron: '0 0,6,12,18 * * *'   # 每6小时执行一次 (UTC)
+    - cron: '0 0,6,12,18 * * *'   # 每6小时执行一次 (UTC 0/6/12/18点)
   workflow_dispatch:               # 支持手动触发
 
 permissions:
@@ -12,7 +12,7 @@ permissions:
 jobs:
   speedtest:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     steps:
       - name: Download CloudflareSpeedTest
@@ -22,92 +22,89 @@ jobs:
             | head -1)
           echo "下载地址: $DOWNLOAD_URL"
           curl -sL "$DOWNLOAD_URL" | tar -xz -C /tmp
-          # 统一命名
-          [ -f /tmp/cfst ] && mv /tmp/cfst /tmp/CloudflareST
-          [ -f /tmp/CloudflareST_linux_amd64 ] && mv /tmp/CloudflareST_linux_amd64 /tmp/CloudflareST
-          ls /tmp/cf* /tmp/Cloud* 2>/dev/null || true
-          chmod +x /tmp/CloudflareST 2>/dev/null || chmod +x /tmp/cfst 2>/dev/null
-          # 找到实际可执行文件
-          CFST=$(find /tmp -maxdepth 1 -name 'cfst*' -o -name 'CloudflareST*' 2>/dev/null | grep -v '\.txt\|\.dat' | head -1)
-          echo "可执行文件: $CFST"
-          cp "$CFST" /tmp/CloudflareST 2>/dev/null || true
+          CFST=$(find /tmp -maxdepth 1 \( -name 'cfst' -o -name 'CloudflareST' \) 2>/dev/null | head -1)
+          cp "$CFST" /tmp/CloudflareST
           chmod +x /tmp/CloudflareST
+          echo "版本: $(/tmp/CloudflareST -v 2>&1 | head -1)"
 
-      - name: Generate IP list for each region
+      - name: Generate sampled IP list
         run: |
-          # CF 官方 IP 段（各地区真实 PoP 节点 IP 范围）
-          cat > /tmp/iplist.txt << 'EOF'
-          173.245.48.0/20
-          103.21.244.0/22
-          103.22.200.0/22
-          103.31.4.0/22
-          141.101.64.0/18
-          108.162.192.0/18
-          190.93.240.0/20
-          188.114.96.0/20
-          197.234.240.0/22
-          198.41.128.0/17
-          162.158.0.0/15
-          104.16.0.0/13
-          104.24.0.0/14
-          172.64.0.0/13
-          131.0.72.0/22
-          EOF
-          # 去除前置空格
-          sed -i 's/^[[:space:]]*//' /tmp/iplist.txt
+          python3 << 'PYEOF'
+          import random
+
+          # CF 官方 IP 段（仅保留速度最快的几个核心段）
+          # 每段随机采样 50 个 IP，总量约 700 个，测速 3 分钟内完成
+          SUBNETS = [
+              # 核心 CF 段（全球 anycast，覆盖各 PoP）
+              ("104.16.0.0",   13),   # 104.16.0.0/13  (~500k IPs) -> 采样
+              ("104.24.0.0",   14),   # 104.24.0.0/14
+              ("172.64.0.0",   13),   # 172.64.0.0/13
+              ("162.158.0.0",  15),   # 162.158.0.0/15
+              ("108.162.192.0",18),   # 108.162.192.0/18
+              ("141.101.64.0", 18),   # 141.101.64.0/18
+              ("190.93.240.0", 20),   # 190.93.240.0/20
+              ("188.114.96.0", 20),   # 188.114.96.0/20
+              ("197.234.240.0",22),   # 197.234.240.0/22
+              ("198.41.128.0", 17),   # 198.41.128.0/17
+              ("173.245.48.0", 20),   # 173.245.48.0/20
+              ("103.21.244.0", 22),   # 103.21.244.0/22
+              ("103.22.200.0", 22),   # 103.22.200.0/22
+              ("103.31.4.0",   22),   # 103.31.4.0/22
+              ("131.0.72.0",   22),   # 131.0.72.0/22
+          ]
+
+          def subnet_to_ips(base, prefix, count=50):
+              parts = list(map(int, base.split('.')))
+              base_int = (parts[0]<<24)|(parts[1]<<16)|(parts[2]<<8)|parts[3]
+              size = 2 ** (32 - prefix)
+              actual_count = min(count, size - 2)
+              offsets = random.sample(range(1, size - 1), actual_count)
+              ips = []
+              for off in offsets:
+                  n = base_int + off
+                  ips.append(f"{(n>>24)&255}.{(n>>16)&255}.{(n>>8)&255}.{n&255}")
+              return ips
+
+          all_ips = []
+          for base, prefix in SUBNETS:
+              ips = subnet_to_ips(base, prefix, 50)
+              all_ips.extend(ips)
+
+          random.shuffle(all_ips)
+          with open('/tmp/iplist.txt', 'w') as f:
+              f.write('\n'.join(all_ips))
+          print(f"生成 {len(all_ips)} 个候选 IP")
+          PYEOF
+          echo "IP 数量: $(wc -l < /tmp/iplist.txt)"
 
       - name: Run speed test
         run: |
           cd /tmp
-          # 测速参数：并发64，延迟上限200ms，下载测试4s，最少保留100个结果
+          # -n 100: 并发100  -tl 200: 延迟上限200ms  -tlr 0.2: 丢包率<20%
+          # -dn 5: 每个IP下载测试5次  -dt 3: 下载测试3s  -p 0: 不打印进度
           ./CloudflareST \
             -f /tmp/iplist.txt \
-            -n 200 \
+            -n 100 \
             -tl 200 \
+            -tlr 0.2 \
             -tp 443 \
-            -t 4 \
             -dn 5 \
-            -dt 4 \
+            -dt 3 \
             -o /tmp/result.csv \
-            -p 0 \
-            || true
+            -p 0
           echo "测速完成，结果行数: $(wc -l < /tmp/result.csv)"
+          head -5 /tmp/result.csv
 
       - name: Process results & assign country labels
         run: |
           python3 << 'PYEOF'
-          import csv, json, urllib.request, time, subprocess, os
+          import csv, urllib.request, time, concurrent.futures
 
-          # 读取测速结果
-          rows = []
-          try:
-              with open('/tmp/result.csv') as f:
-                  reader = csv.DictReader(f)
-                  for row in reader:
-                      rows.append(row)
-          except:
-              pass
-
-          print(f"总测速结果: {len(rows)} 个 IP")
-
-          if not rows:
-              # 若测速失败，写入已知可用的备用节点
-              fallback = [
-                  "162.159.192.40:443#🇯🇵JP-备用",
-                  "162.159.193.40:443#🇺🇸US-备用",
-                  "104.26.9.4:443#🇸🇬SG-备用",
-              ]
-              with open('/tmp/ADD.txt', 'w') as f:
-                  f.write('\n'.join(fallback))
-              print("使用备用节点")
-              exit(0)
-
-          # 查询 IP 的 CF PoP（cdn-cgi/trace）以获取真实地区
           IATA_TO_CC = {
               'HKG':'HK','SIN':'SG','ICN':'KR','NRT':'JP','KIX':'JP','OKA':'JP','FUK':'JP',
               'TPE':'TW','TSA':'TW',
               'LAX':'US','SJC':'US','SEA':'US','ORD':'US','EWR':'US','IAD':'US',
-              'DFW':'US','MIA':'US','ATL':'US','JFK':'US','BOS':'US','DEN':'US','LAS':'US',
+              'DFW':'US','MIA':'US','ATL':'US','JFK':'US','BOS':'US','DEN':'US',
               'LHR':'GB','MAN':'GB',
               'CDG':'FR','LYS':'FR',
               'FRA':'DE','MUC':'DE','BER':'DE',
@@ -117,13 +114,13 @@ jobs:
               'SYD':'AU','MEL':'AU','BNE':'AU','PER':'AU',
               'AKL':'NZ',
               'YYZ':'CA','YVR':'CA','YUL':'CA',
-              'GRU':'BR','SCL':'CL','BOG':'CO','EZE':'AR',
+              'GRU':'BR','EZE':'AR','SCL':'CL',
               'JNB':'ZA','NBO':'KE',
               'DXB':'AE','DOH':'QA','RUH':'SA',
               'BOM':'IN','DEL':'IN','BLR':'IN','MAA':'IN',
               'KUL':'MY','CGK':'ID','BKK':'TH','MNL':'PH',
+              'IST':'TR',
           }
-
           CC_EMOJI = {
               'HK':'🇭🇰','SG':'🇸🇬','KR':'🇰🇷','JP':'🇯🇵','TW':'🇹🇼',
               'US':'🇺🇸','GB':'🇬🇧','FR':'🇫🇷','DE':'🇩🇪','NL':'🇳🇱',
@@ -131,32 +128,30 @@ jobs:
               'IN':'🇮🇳','BR':'🇧🇷','ZA':'🇿🇦','AE':'🇦🇪','TR':'🇹🇷',
               'MY':'🇲🇾','TH':'🇹🇭','ID':'🇮🇩','PH':'🇵🇭',
               'AT':'🇦🇹','ES':'🇪🇸','IT':'🇮🇹','DK':'🇩🇰','NO':'🇳🇴',
-              'FI':'🇫🇮','BE':'🇧🇪',
           }
 
-          # 按延迟排序，每个 IP 查 CF colo
+          # 读取测速结果
+          rows = []
+          try:
+              with open('/tmp/result.csv') as f:
+                  for row in csv.DictReader(f):
+                      rows.append(row)
+          except Exception as e:
+              print(f"读取失败: {e}")
+
+          print(f"测速结果: {len(rows)} 个 IP")
+          if not rows:
+              # 备用节点
+              with open('/tmp/ADD.txt', 'w') as f:
+                  f.write("162.159.192.40:443#🇯🇵JP-01\n162.159.193.40:443#🇺🇸US-01")
+              exit(0)
+
+          # 按延迟排序，取前 200 个测速通过的 IP
           rows.sort(key=lambda r: float(r.get('平均延迟','9999').replace('ms','')))
+          top = rows[:200]
 
-          cc_nodes = {}   # cc -> [(ip, latency, speed)]
-          queried = set()
-
-          TARGET_CC = {'HK','SG','KR','JP','TW','US','GB','FR','DE','NL','AU','CA','IN','TR','MY'}
-          PER_CC = 3      # 每个国家保留3个最优节点
-
-          for row in rows:
-              if all(len(v) >= PER_CC for cc, v in cc_nodes.items() if cc in TARGET_CC) \
-                 and len(cc_nodes) >= len(TARGET_CC):
-                  break
-
-              ip = row.get('IP地址', '').strip()
-              if not ip or ip in queried:
-                  continue
-              queried.add(ip)
-
-              latency = row.get('平均延迟', '?')
-              speed   = row.get('下载速度 (MB/s)', '0')
-
-              # 查 CF colo
+          # 并发查 colo
+          def get_colo(ip):
               try:
                   req = urllib.request.Request(
                       f"http://{ip}/cdn-cgi/trace",
@@ -164,84 +159,89 @@ jobs:
                   )
                   with urllib.request.urlopen(req, timeout=3) as r:
                       d = dict(l.split('=',1) for l in r.read().decode().strip().split('\n') if '=' in l)
-                  colo = d.get('colo','').strip()
-                  loc  = d.get('loc','').strip()
+                  return ip, d.get('colo','').strip(), d.get('loc','').strip()
               except:
-                  colo, loc = '', ''
+                  return ip, '', ''
 
+          print("查询 CF PoP...")
+          with concurrent.futures.ThreadPoolExecutor(max_workers=30) as ex:
+              colo_results = dict()
+              for ip, colo, loc in ex.map(lambda r: get_colo(r.get('IP地址','')), top):
+                  if ip:
+                      colo_results[ip] = (colo, loc)
+
+          # 按国家分组，每国保留 3 个最优节点
+          PER_CC = 3
+          PRIORITY = ['HK','JP','SG','KR','TW','US','GB','DE','FR','NL','AU','CA','IN','MY','TH','TR','AE','BR']
+          cc_nodes = {}
+
+          for row in top:
+              ip = row.get('IP地址','').strip()
+              colo, loc = colo_results.get(ip, ('',''))
               cc = IATA_TO_CC.get(colo, loc)
               if not cc:
                   continue
-
               if cc not in cc_nodes:
                   cc_nodes[cc] = []
               if len(cc_nodes[cc]) < PER_CC:
-                  cc_nodes[cc].append((ip, latency, speed, colo))
-                  emoji = CC_EMOJI.get(cc, '')
-                  print(f"  ✅ {emoji}{cc} {ip}  {latency}  {speed}MB/s  [{colo}]")
+                  lat = row.get('平均延迟','?')
+                  spd = row.get('下载速度 (MB/s)','?')
+                  cc_nodes[cc].append((ip, lat, spd))
+                  print(f"  ✅ {CC_EMOJI.get(cc,'')}{cc} {ip}  {lat}  {spd}MB/s  [{colo}]")
 
-          # 生成 ADD.txt（优先热门国家排序）
-          PRIORITY = ['HK','JP','SG','KR','TW','US','GB','DE','FR','NL','AU','CA','IN','MY','TH','TR']
+          # 生成 ADD.txt
           lines = []
-          cc_count = {}
           for cc in PRIORITY:
-              for ip, lat, spd, colo in cc_nodes.get(cc, []):
-                  emoji = CC_EMOJI.get(cc, '')
-                  cc_count[cc] = cc_count.get(cc, 0) + 1
-                  lines.append(f"{ip}:443#{emoji}{cc}-{cc_count[cc]:02d}")
-
-          # 补充其他地区
+              for idx, (ip, lat, spd) in enumerate(cc_nodes.get(cc, []), 1):
+                  lines.append(f"{ip}:443#{CC_EMOJI.get(cc,'')}{cc}-{idx:02d}")
           for cc, nodes in cc_nodes.items():
-              if cc in PRIORITY:
-                  continue
-              for ip, lat, spd, colo in nodes:
-                  emoji = CC_EMOJI.get(cc, '')
-                  cc_count[cc] = cc_count.get(cc, 0) + 1
-                  lines.append(f"{ip}:443#{emoji}{cc}-{cc_count[cc]:02d}")
+              if cc in PRIORITY: continue
+              for idx, (ip, lat, spd) in enumerate(nodes, 1):
+                  lines.append(f"{ip}:443#{CC_EMOJI.get(cc,'')}{cc}-{idx:02d}")
 
           with open('/tmp/ADD.txt', 'w') as f:
               f.write('\n'.join(lines))
 
-          print(f"\n生成 {len(lines)} 个节点，覆盖 {len(cc_nodes)} 个国家/地区")
-          print('\n'.join(lines))
+          print(f"\n✅ 生成 {len(lines)} 个节点，覆盖 {len(cc_nodes)} 个国家/地区")
+          for line in lines:
+              print(f"  {line}")
           PYEOF
 
-      - name: Update ADD.txt via Worker API
+      - name: Update Worker ADD.txt via API
         env:
           WORKER_URL: ${{ secrets.WORKER_URL }}
-          WORKER_TOKEN: ${{ secrets.WORKER_TOKEN }}
           WORKER_PASSWORD: ${{ secrets.WORKER_PASSWORD }}
         run: |
           if [ ! -s /tmp/ADD.txt ]; then
-            echo "ADD.txt 为空，跳过更新"
+            echo "ADD.txt 为空，跳过"
             exit 0
           fi
 
-          echo "节点内容预览:"
+          echo "=== 节点内容 ==="
           cat /tmp/ADD.txt
+          echo ""
+          echo "节点数: $(wc -l < /tmp/ADD.txt)"
 
-          # 1. 登录获取 cookie
-          LOGIN_RESP=$(curl -s -c /tmp/cookie.txt -b /tmp/cookie.txt \
+          # 登录
+          curl -s -c /tmp/cookie.txt -b /tmp/cookie.txt \
             -X POST "${WORKER_URL}/login" \
             -H "Content-Type: application/x-www-form-urlencoded" \
             -H "User-Agent: Mozilla/5.0" \
-            -d "password=${WORKER_PASSWORD}" \
-            -w "\n%{http_code}")
-          HTTP_CODE=$(echo "$LOGIN_RESP" | tail -1)
-          echo "登录状态码: $HTTP_CODE"
+            -d "password=${WORKER_PASSWORD}" > /dev/null
 
-          # 2. 上传 ADD.txt
-          UPLOAD_RESP=$(curl -s -c /tmp/cookie.txt -b /tmp/cookie.txt \
+          # 上传
+          RESULT=$(curl -s -c /tmp/cookie.txt -b /tmp/cookie.txt \
             -X POST "${WORKER_URL}/admin/ADD.txt" \
             -H "Content-Type: text/plain;charset=UTF-8" \
             -H "User-Agent: Mozilla/5.0" \
             --data-binary @/tmp/ADD.txt)
-          echo "上传结果: $UPLOAD_RESP"
+          echo "上传结果: $RESULT"
 
-      - name: Save result as artifact
+      - name: Save artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: speedtest-result-${{ github.run_number }}
+          name: speedtest-${{ github.run_number }}
           path: |
             /tmp/result.csv
             /tmp/ADD.txt
