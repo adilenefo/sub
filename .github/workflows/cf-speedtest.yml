@@ -84,12 +84,12 @@ jobs:
             -n 200 \
             -t 4 \
             -tp 443 \
-            -tl 200 \
-            -sl 1 \
+            -tl 300 \
             -p 30 \
+            -dd \
             -o /tmp/result.csv
-          echo "测速完成，结果行数: $(wc -l < /tmp/result.csv)"
-          head -5 /tmp/result.csv
+          echo "测速完成，结果行数: $(wc -l < /tmp/result.csv 2>/dev/null || echo 0)"
+          head -5 /tmp/result.csv 2>/dev/null || echo "result.csv 不存在"
 
       - name: Process results and update nodes
         env:
