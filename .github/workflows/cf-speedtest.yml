@@ -84,7 +84,7 @@ jobs:
             -n 200 \
             -t 4 \
             -tp 443 \
-            -tl 300 \
+            -tl 600 \
             -p 30 \
             -dd \
             -o /tmp/result.csv
@@ -117,7 +117,7 @@ jobs:
                       ip = row.get('IP', '').strip()
                       delay = float(row.get('平均延迟', row.get('Avg Delay', '9999')).replace('ms','').strip() or 9999)
                       speed = float(row.get('下载速度 (MB/s)', row.get('Download Speed', '0')).strip() or 0)
-                      if ip and delay < 200:
+                      if ip and delay < 500:
                           good_ips.append((delay, speed, ip))
           except Exception as e:
               print(f"读取 CSV 失败: {e}")
