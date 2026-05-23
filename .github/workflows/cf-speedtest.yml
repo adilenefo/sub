@@ -21,14 +21,15 @@ jobs:
           ASSET=$(curl -s https://api.github.com/repos/XIU2/CloudflareSpeedTest/releases/latest \
             | python3 -c "import json,sys; [print(a['browser_download_url']) for a in json.load(sys.stdin)['assets'] if 'linux_amd64' in a['name']]" \
             | head -1)
-          curl -sL "$ASSET" | tar -xz -C /tmp
-          CFST=$(find /tmp -maxdepth 1 -type f \( -name 'cfst' -o -name 'CloudflareST' \) | head -1)
-          chmod +x "$CFST"
-          ln -sf "$CFST" /usr/local/bin/cfst
+          mkdir -p /tmp/cfst_dir && curl -sL "$ASSET" | tar -xz -C /tmp/cfst_dir
+          ls -la /tmp/cfst_dir/
 
       - name: Run speedtest
         run: |
-          cfst -n 300 -t 4 -tp 443 -tl 600 -p 20 -dd -o /tmp/result.csv
+          cd /tmp/cfst_dir
+          CFST=$(find . -maxdepth 1 -type f \( -name 'cfst' -o -name 'CloudflareST' \) | head -1)
+          chmod +x "$CFST"
+          "$CFST" -n 300 -t 4 -tp 443 -tl 600 -p 20 -dd -o /tmp/result.csv
           echo "测速结果: $(wc -l < /tmp/result.csv) 行"
           head -5 /tmp/result.csv
 
