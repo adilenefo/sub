@@ -23,14 +23,17 @@ jobs:
             | python3 -c "import json,sys; [print(a['browser_download_url']) for a in json.load(sys.stdin)['assets'] if 'linux_amd64' in a['name']]" \
             | head -1)
           curl -sL "$ASSET" | tar -xz -C /tmp
-          CFST=$(find /tmp -maxdepth 1 \( -name 'cfst' -o -name 'CloudflareST' \) | head -1)
-          cp "$CFST" /tmp/cfst && chmod +x /tmp/cfst
+          CFST=$(find /tmp -maxdepth 1 -type f \( -name 'cfst' -o -name 'CloudflareST' \) | head -1)
+          echo "找到可执行文件: $CFST"
+          chmod +x "$CFST"
+          ln -sf "$CFST" /usr/local/bin/cfst
+          cfst -v
 
       - name: Fetch CF IPs and run speedtest
         run: |
           echo "aW1wb3J0IHVybGxpYi5yZXF1ZXN0LCByYW5kb20sIG9zLCBzeXMKCiMgQ0Yg5LyY6LSoIElQIOadpea6kO+8iOi/meS6m+mDveaYr+ekvuWMuumVv+acn+e7tOaKpOeahOWPr+eUqCBJUO+8iQpTT1VSQ0VTID0gWwogICAgImh0dHBzOi8vYWRkcmVzc2VzYXBpLjA5MDIyNy54eXovQ2xvdWRGbGFyZVllcyIsCiAgICAiaHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2NtbGl1L1dvcmtlclZsZXNzMnN1Yi9tYWluL2FkZHJlc3Nlc2FwaS50eHQiLAogICAgImh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS95bXl1dXUvSVBEQi9yZWZzL2hlYWRzL21haW4vYmVzdGNmLnR4dCIsCl0KCmFsbF9pcHMgPSBbXQpmb3IgdXJsIGluIFNPVVJDRVM6CiAgICB0cnk6CiAgICAgICAgcmVxID0gdXJsbGliLnJlcXVlc3QuUmVxdWVzdCh1cmwsIGhlYWRlcnM9eydVc2VyLUFnZW50JzogJ2N1cmwvNyd9KQogICAgICAgIHdpdGggdXJsbGliLnJlcXVlc3QudXJsb3BlbihyZXEsIHRpbWVvdXQ9OCkgYXMgcjoKICAgICAgICAgICAgbGluZXMgPSByLnJlYWQoKS5kZWNvZGUoKS5zdHJpcCgpLnNwbGl0KCdcbicpCiAgICAgICAgaXBzID0gW2wuc3RyaXAoKS5zcGxpdCgnOicpWzBdLnNwbGl0KCcjJylbMF0uc3RyaXAoKSBmb3IgbCBpbiBsaW5lcyBpZiBsLnN0cmlwKCkgYW5kIG5vdCBsLnN0YXJ0c3dpdGgoJzwnKV0KICAgICAgICBpcHMgPSBbaXAgZm9yIGlwIGluIGlwcyBpZiBpcCBhbmQgJy4nIGluIGlwXQogICAgICAgIHByaW50KGYi5p2l5rqQIHt1cmwuc3BsaXQoJy8nKVsyXX06IHtsZW4oaXBzKX0gSVBzIikKICAgICAgICBhbGxfaXBzLmV4dGVuZChpcHMpCiAgICBleGNlcHQgRXhjZXB0aW9uIGFzIGU6CiAgICAgICAgcHJpbnQoZiLmnaXmupDlpLHotKUge3VybH06IHtlfSIpCgojIOWOu+mHjQphbGxfaXBzID0gbGlzdChkaWN0LmZyb21rZXlzKGFsbF9pcHMpKQpwcmludChmIuWOu+mHjeWQjuWFsSB7bGVuKGFsbF9pcHMpfSDkuKogSVAiKQoKaWYgbm90IGFsbF9pcHM6CiAgICAjIGZhbGxiYWNrOiBDRiDlrpjmlrkgSVAg5q616ZqP5py66YeH5qC3CiAgICBzZWdzID0gWwogICAgICAgICIxMDQuMTYiLCIxMDQuMTciLCIxMDQuMTgiLCIxMDQuMTkiLCIxMDQuMjAiLCIxMDQuMjEiLCIxMDQuMjIiLCIxMDQuMjMiLAogICAgICAgICIxMDQuMjQiLCIxMDQuMjUiLCIxMDQuMjYiLCIxMDQuMjciLCIxNzIuNjQiLCIxNzIuNjUiLCIxNzIuNjYiLCIxNzIuNjciLAogICAgICAgICIxNjIuMTU4IiwiMTYyLjE1OSIsIjEwOC4xNjIiLCIxNDEuMTAxIiwiMTkwLjkzIiwiMTg4LjExNCIsIjE5Ny4yMzQiLAogICAgICAgICIxOTguNDEiLCIxNzMuMjQ1IiwiMTAzLjIxIiwiMTAzLjIyIiwiMTAzLjMxIiwKICAgIF0KICAgIHJhbmRvbS5zZWVkKCkKICAgIGFsbF9pcHMgPSBbZiJ7c30ue3JhbmRvbS5yYW5kaW50KDAsMjU1KX0ue3JhbmRvbS5yYW5kaW50KDEsMjU0KX0iIGZvciBzIGluIHNlZ3MgZm9yIF8gaW4gcmFuZ2UoMTApXQogICAgcHJpbnQoZiLkvb/nlKggZmFsbGJhY2sg6ZqP5py66YeH5qC3OiB7bGVuKGFsbF9pcHMpfSBJUHMiKQoKIyDkv53lrZgKd2l0aCBvcGVuKCcvdG1wL2NmX2lwcy50eHQnLCAndycpIGFzIGY6CiAgICBmLndyaXRlKCdcbicuam9pbihhbGxfaXBzKSkKcHJpbnQoZiLlt7LlhpnlhaUgL3RtcC9jZl9pcHMudHh0ICh7bGVuKGFsbF9pcHMpfSDooYwpIikK" | base64 -d > /tmp/gen_ips.py
           python3 /tmp/gen_ips.py
-          /tmp/cfst -f /tmp/cf_ips.txt -n 200 -t 4 -tp 443 -tl 600 -p 30 -dd -o /tmp/result.csv
+          cfst -f /tmp/cf_ips.txt -n 200 -t 4 -tp 443 -tl 600 -p 30 -dd -o /tmp/result.csv
           echo "测速结果行数: $(wc -l < /tmp/result.csv)"
           head -3 /tmp/result.csv
 
