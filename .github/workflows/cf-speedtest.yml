@@ -90,9 +90,9 @@ jobs:
           rows = []
           with open('/tmp/result.csv', newline='') as f:
             for row in csv.DictReader(f):
-              ip = row.get('IP','').strip()
+              ip = row.get('IP 地址', row.get('IP','')).strip()
               try:
-                delay = float(row.get('平均延迟','9999').replace('ms','').strip())
+                delay = float(row.get('平均延迟', row.get('Avg Delay','9999')).replace('ms','').strip())
               except:
                 delay = 9999.0
               if ip and delay < 9000:
