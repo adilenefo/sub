@@ -29,7 +29,7 @@ REGIONS = {
     "DE": "🇩🇪 德国",
 }
 
-PORTS = [443, 2053, 2096, 8443]
+PORTS = [443, 2053, 2096, 2083]
 
 lines = []
 for cc, label in REGIONS.items():
