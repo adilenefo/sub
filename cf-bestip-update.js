@@ -1,11 +1,4 @@
-/*
- * CF 优选IP自动更新脚本
- * 从 ip.v2too.top 抓取三网优选IP，更新到 EDT2 的 ADD.txt
- * 
- * Surge 配置：
- * [Script]
- * cf-bestip = type=cron,cronexp=0 */6 * * *,timeout=60,script-path=https://raw.githubusercontent.com/adilenefo/sub/main/cf-bestip-update.js,wake-system=1
- */
+// CF 优选IP自动更新脚本 - 从 ip.v2too.top 抓取三网优选IP，更新到 EDT2 的 ADD.txt
 
 const EDT2_URL = "https://vless.xbrou.com";
 const EDT2_PASS = "xbrou";
