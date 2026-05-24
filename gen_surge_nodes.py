@@ -10,12 +10,12 @@ HOST = "vless.xbrou.com"
 CF_ADDRS = [
     "icook.hk",
     "time.is",
-    "shopify.com",
-    "www.who.int",
-    "japan.com",
-    "malaysia.com",
-    "russia.com",
-    "wto.org",
+    "www.visa.com",
+    "www.visa.co.jp",
+    "www.visa.com.sg",
+    "www.visa.com.hk",
+    "www.visa.com.tw",
+    "discord.com",
 ]
 
 REGIONS = {
