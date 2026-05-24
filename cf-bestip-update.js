@@ -1,10 +1,10 @@
 // CF 优选IP自动更新脚本 - 从 ip.v2too.top 抓取三网优选IP，更新到 EDT2 的 ADD.txt
 
-const EDT2_URL = "https://vless.xbrou.com";
-const EDT2_PASS = "xbrou";
-const V2TOO_URL = "https://ip.v2too.top";
+var EDT2_URL = "https://vless.xbrou.com";
+var EDT2_PASS = "xbrou";
+var V2TOO_URL = "https://ip.v2too.top";
 
-const REGIONS = {
+var REGIONS = {
   "HK": "🇭🇰香港",
   "JP": "🇯🇵日本",
   "SG": "🇸🇬新加坡",
@@ -14,10 +14,10 @@ const REGIONS = {
   "UK": "🇬🇧英国",
   "DE": "🇩🇪德国",
 };
-const PORTS = [443, 2053, 2096, 2083];
+var PORTS = [443, 2053, 2096, 2083];
 
 // 备用API
-const BACKUP_APIS = [
+var BACKUP_APIS = [
   "https://ipdb.api.030101.xyz/?type=bestcf",
   "https://addressesapi.090227.xyz/CloudFlareYes",
 ];
