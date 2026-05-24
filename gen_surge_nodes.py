@@ -11,7 +11,7 @@ CF_ADDRS = [
     "icook.hk",
     "time.is",
     "shopify.com",
-    "visa.cn",
+    "www.who.int",
     "japan.com",
     "malaysia.com",
     "russia.com",
